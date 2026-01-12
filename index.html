@@ -603,11 +603,14 @@
 
         // --- LAB LOGIC (GAME 1) ---
         const lab = {
-            samples: [
-                { name: "Pumice", mass: 15.0, volume: 25.0, density: 0.6, type: "pumice", desc: "Light gray, full of holes (vesicular)." }, // Floats
+            pool: [
+                { name: "Pumice", mass: 15.0, volume: 25.0, density: 0.6, type: "pumice", desc: "Light gray, full of holes (vesicular)." },
                 { name: "Pyrite", mass: 50.0, volume: 10.0, density: 5.0, type: "pyrite", desc: "Brass-yellow, metallic luster, cubic crystals." },
-                { name: "Obsidian", mass: 30.0, volume: 12.0, density: 2.5, type: "obsidian", desc: "Black, glassy texture, conchoidal fracture." }
+                { name: "Obsidian", mass: 30.0, volume: 12.0, density: 2.5, type: "obsidian", desc: "Black, glassy texture, conchoidal fracture." },
+                { name: "Quartz", mass: 26.0, volume: 10.0, density: 2.6, type: "quartz", desc: "Glassy luster, often clear or white." },
+                { name: "Gold", mass: 96.5, volume: 5.0, density: 19.3, type: "gold", desc: "Very heavy for its size. Metallic yellow." }
             ],
+            samples: [],
             currentSampleIndex: null,
             measuredMass: false,
             measuredVol: false,
@@ -618,12 +621,22 @@
                 this.measuredMass = false;
                 this.measuredVol = false;
                 this.tries = 0;
+                
+                // Shuffle pool and pick 3
+                const shuffled = [...this.pool].sort(() => 0.5 - Math.random());
+                this.samples = shuffled.slice(0, 3);
+
                 document.getElementById('read-mass').innerText = "0.0";
                 document.getElementById('read-volume').innerText = "0.0";
                 document.getElementById('input-density').value = "";
                 document.getElementById('input-id').value = "";
                 document.getElementById('sample-desc').innerText = "Select a sample to analyze...";
                 document.getElementById('lab-feedback').innerText = "";
+                
+                // Reset visuals (reenable buttons)
+                document.querySelectorAll('.sample-rock').forEach(el => {
+                    el.classList.remove('border-blue-500', 'opacity-50', 'pointer-events-none');
+                });
             },
 
             toggleGuide: function() {
