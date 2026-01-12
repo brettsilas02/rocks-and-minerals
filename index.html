@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- NOTE: Keep this filename as 'index.html' for GitHub Pages to load it automatically -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -133,7 +134,7 @@
             </div>
         </div>
         <div class="text-right hidden md:block">
-            <p class="text-sm text-gray-400">STATUS: <span id="systemStatus" class="text-green-400 font-bold">ONLINE</span></p>
+            <p class="text-sm text-gray-400">STATUS: <span id="systemStatus" class="text-green-400 font-bold">ONLINE v1.0</span></p>
             <p class="text-sm text-gray-400">LOCATION: CLOVER, SC</p>
         </div>
     </header>
@@ -1099,4 +1100,179 @@
 
                 // Obstacles
                 this.obstacles.forEach(o => {
-                    this.ctx.fillStyle = o.type === "good" ? "#fbbf24
+                    this.ctx.fillStyle = o.type === "good" ? "#fbbf24" : "#6b7280";
+                    this.ctx.fillRect(o.x-15, o.y-15, 30, 30);
+                    this.ctx.fillStyle = "white";
+                    this.ctx.font = "10px sans-serif";
+                    this.ctx.textAlign = "center";
+                    this.ctx.fillText(o.type === "good" ? "+" : "X", o.x, o.y+4);
+                });
+
+                document.getElementById('game-score').innerText = this.score;
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        // --- GAME 4: MOHS DRILL (Lane Defense) ---
+        class Game4 {
+            constructor(canvas, bL, bR) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.drill = { hardness: 5, name: "Apatite" }; // Start mid-tier
+                this.walls = [];
+                this.score = 0;
+                this.running = false;
+                this.speed = 2;
+                this.spawnTimer = 0;
+                this.gameOverReason = "";
+                
+                // Controls
+                document.getElementById('touch-controls').classList.remove('hidden');
+                document.getElementById('btn-action').classList.add('hidden');
+                bL.classList.remove('hidden');
+                bR.classList.remove('hidden');
+
+                bL.innerHTML = "<i class='fas fa-minus'></i>";
+                bR.innerHTML = "<i class='fas fa-plus'></i>";
+                
+                // Data
+                this.minerals = [
+                    {h:1, n:"Talc", c:"#e5e7eb"}, {h:2, n:"Gypsum", c:"#fcd34d"}, 
+                    {h:3, n:"Calcite", c:"#f87171"}, {h:4, n:"Fluorite", c:"#60a5fa"},
+                    {h:5, n:"Apatite", c:"#4ade80"}, {h:6, n:"Feldspar", c:"#fb923c"}, 
+                    {h:7, n:"Quartz", c:"#a855f7"}, {h:8, n:"Topaz", c:"#ec4899"},
+                    {h:9, n:"Corundum", c:"#f43f5e"}, {h:10, n:"Diamond", c:"#06b6d4"}
+                ];
+
+                const changeDrill = (dir) => {
+                    let newH = this.drill.hardness + dir;
+                    if(newH < 1) newH = 1;
+                    if(newH > 10) newH = 10;
+                    this.drill.hardness = newH;
+                    this.drill.name = this.minerals[newH-1].n;
+                };
+
+                bL.onclick = () => changeDrill(-1);
+                bR.onclick = () => changeDrill(1);
+            }
+
+            start() {
+                this.running = true;
+                this.loop();
+            }
+
+            stop() { this.running = false; }
+            endGame() { this.stop(); showGameOver(this.score, 4, this.gameOverReason); }
+
+            loop() {
+                if(!this.running) return;
+                
+                this.speed += 0.001;
+                this.spawnTimer++;
+
+                if(this.spawnTimer > 100) {
+                    this.spawnTimer = 0;
+                    const idx = Math.floor(Math.random() * 9); // 0-8 (up to Corundum walls)
+                    const m = this.minerals[idx];
+                    this.walls.push({
+                        y: -50,
+                        h: m.h,
+                        n: m.n,
+                        c: m.c
+                    });
+                }
+
+                // Move Walls (Vertical)
+                for(let i=0; i<this.walls.length; i++) {
+                    let w = this.walls[i];
+                    w.y += this.speed;
+
+                    // Collision (Drill is at bottom)
+                    if(w.y > this.canvas.height - 100 && w.y < this.canvas.height - 50) {
+                        // Logic: Drill > Wall but not too much
+                        const diff = this.drill.hardness - w.h;
+
+                        if (diff <= 0) {
+                            // Drill softer or equal -> BREAK
+                            this.gameOverReason = `CRASH! Your drill (${this.drill.name}) was too soft for ${w.n}.`;
+                            this.endGame();
+                            return;
+                        } else if (diff > 3) {
+                            // Drill way too hard -> SHATTER
+                            this.gameOverReason = `SHATTERED! Your drill (${this.drill.name}) vibrated too hard for ${w.n}.`;
+                            this.endGame();
+                            return;
+                        } else {
+                            // Sweet spot (1, 2, or 3 levels higher)
+                            this.score += w.h * 10;
+                            // Bonus for precision (exact match +1 is best)
+                            if (diff === 1) this.score += 20; 
+                            
+                            this.walls.splice(i, 1);
+                            i--; // adjust index
+                        }
+                    }
+                }
+
+                // Draw
+                this.ctx.fillStyle = "#111827";
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw Walls
+                this.walls.forEach(w => {
+                    this.ctx.fillStyle = w.c;
+                    this.ctx.fillRect(50, w.y, this.canvas.width - 100, 40);
+                    this.ctx.fillStyle = "black";
+                    this.ctx.font = "bold 16px monospace";
+                    this.ctx.textAlign = "center";
+                    this.ctx.fillText(`${w.n} (H:${w.h})`, this.canvas.width/2, w.y+25);
+                });
+
+                // Draw Drill
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.canvas.width/2, this.canvas.height - 100);
+                this.ctx.lineTo(this.canvas.width/2 - 20, this.canvas.height - 20);
+                this.ctx.lineTo(this.canvas.width/2 + 20, this.canvas.height - 20);
+                this.ctx.fill();
+                
+                // HUD for Drill
+                this.ctx.fillStyle = "white";
+                this.ctx.font = "bold 20px sans-serif";
+                this.ctx.textAlign = "center";
+                this.ctx.fillText(`EQUIPPED: ${this.drill.name} (${this.drill.hardness})`, this.canvas.width/2, this.canvas.height - 5);
+
+                document.getElementById('game-score').innerText = this.score;
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        // --- UTILS ---
+        function showGameOver(score, gameId, reason="") {
+            const el = document.getElementById('view-game-over');
+            const feedback = document.getElementById('game-feedback');
+            
+            el.classList.remove('hidden');
+            document.getElementById('final-score-display').innerText = score;
+            
+            if(reason) {
+                feedback.innerText = reason;
+                feedback.classList.remove('hidden');
+            } else {
+                feedback.classList.add('hidden');
+            }
+            
+            // Save Score
+            const key = `game${gameId}Score`;
+            if(score > app.state[key]) {
+                app.state[key] = score;
+            }
+            app.save();
+        }
+
+        // Start
+        app.init();
+
+    </script>
+</body>
+</html>
